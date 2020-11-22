@@ -63,7 +63,7 @@
 ;; completions in a separate buffer, which does not work anyway.  Now it uses
 ;; new (compared to the originial tempo package) and shiny completing-read
 ;; interface.
-(define-advice tempo-mode-display-completions (:override (string tag-list) read)
+(define-advice tempo-display-completions (:override (string tag-list) read)
   (let* ((tag-list-names (tempo-mode-tag-list-names tag-list))
          (name (completing-read "Tempo: " tag-list-names nil t string)))
     (delete-char (- (length string)))
