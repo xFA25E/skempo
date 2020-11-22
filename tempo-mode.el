@@ -88,6 +88,7 @@ Return a list which starts with the oldest forefather and ends with `MODE'."
 
 ;;;; COMMANDS
 
+;;;###autoload
 (defun tempo-mode-complete-tag-or-call-on-region ()
   "Complete tempo tag or provide completion for a template around region.
 If the region is active, then provide a completion for a tempo template.
@@ -99,6 +100,7 @@ suitable tag, provide template completion."
     (unless (tempo-complete-tag)
       (tempo-display-completions "" (tempo-build-collection)))))
 
+;;;###autoload
 (define-minor-mode tempo-mode
   "Minor mode for tempo-templates.
 It helps initializing templates for a certain mode and provides a convinient
