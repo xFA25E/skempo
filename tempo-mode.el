@@ -27,7 +27,7 @@
 ;;
 ;; Call TEMPO-MODE.  Call templates with
 ;; tempo-mode-complete-tag-or-call-on-region.  Define tempalets with
-;; tempo-mode-define-templates.
+;; tempo-mode-define-templates (see docstring).
 
 ;;; Code:
 
@@ -104,7 +104,7 @@ suitable tag, provide template completion."
 It helps initializing templates for a certain mode and provides a convinient
 macro for template definition.  Also, it provides some tempo enhancements for
 completion."
-  nil "Tempo-Mode" tempo-mode-map
+  nil " Tempo-Mode" tempo-mode-map
   (if tempo-mode
       (thread-last (tempo-mode-get-mode-genealogy major-mode)
         (seq-map #'tempo-mode-tags-var)
