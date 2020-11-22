@@ -2,8 +2,11 @@
 
 ;; Copyright (C) 2020  Valeriy Litkovskyy
 
-;; Author: Valeriy Litkovskyy <valeriy.litkovskyy@mail.polimi.it>
+;; Author: Valeriy Litkovskyy
 ;; Keywords: convenience
+;; Version: 0.1.0
+;; URL: https://github.com/xFA25E/tempo-mode
+;; Package-Requires: ((emacs "25.1"))
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -31,12 +34,16 @@
 
 ;;;; REQUIRES
 
+(require 'seq)
+(require 'subr-x)
+(require 'cl-lib)
+(require 'mode-local)
 (require 'tempo)
 
 
 ;;;; VARIABLES
 
-(defvar tempo-mode-map (make-sparse-keymap) "Map used in `TEMPO-MODE'")
+(defvar tempo-mode-map (make-sparse-keymap) "Map used in `TEMPO-MODE'.")
 
 
 ;;;; FUNCTIONS
@@ -70,7 +77,7 @@ Return a list which starts with the oldest forefather and ends with `MODE'."
       ((null parent) modes)))
 
 (defun tempo-mode-tags-var (mode)
-  "Return a tempo-tags variable's symbol for `MODE'."
+  "Return a tempo tags variable's symbol for `MODE'."
   (intern (replace-regexp-in-string (rx "-mode" eos) "-tempo-tags"
                                     (symbol-name mode))))
 
@@ -99,11 +106,11 @@ macro for template definition.  Also, it provides some tempo enhancements for
 completion."
   nil "Tempo-Mode" tempo-mode-map
   (if tempo-mode
-      (thread-last (tempo-mode-get-mode-genealogy mode)
+      (thread-last (tempo-mode-get-mode-genealogy major-mode)
         (seq-map #'tempo-mode-tags-var)
         (seq-filter #'boundp)
         (seq-do #'tempo-use-tag-list))
-    (thread-last (tempo-mode-get-mode-genealogy mode)
+    (thread-last (tempo-mode-get-mode-genealogy major-mode)
       (seq-map #'tempo-mode-tags-var)
       (seq-filter #'boundp)
       (seq-do #'tempo-mode-remove-tag-list))))
@@ -112,15 +119,12 @@ completion."
 ;;;; MACROS
 
 ;;;###autoload
-(put 'tempo-mode-define-templates #'lisp-indent-function 1)
-
-;;;###autoload
 (defmacro tempo-mode-define-templates (mode &rest templates)
-  "Conveniently define tempo templates.
+  "Conveniently define tempo `TEMPLATES' for `MODE'.
 
 Example:
 
-(tempo-define-templates lisp-interaction-mode
+\(tempo-define-templates `LISP-INTERACTION-MODE'
   (\"var\" '(\"(defvar var\" p n> r> \")\"))
   (\"fun\" '(\"(defun fun\" p \" (\" p \")\" n> r> \")\")))
 
@@ -128,7 +132,7 @@ The above will define two templates with tags \"var\" and \"fun\" for
 `LISP-INTERACTION-MODE'.  It will save those tags in
 `LISP-INTERACTION-TEMPO-TAGS' variable.  Two templates will have names
 \"lisp-interaction-var\" and \"lisp-interaction-fun\" respectively.  It will
-also attempt to refresh buffers with lisp-interaction-mode.  "
+also attempt to refresh buffers with lisp-interaction-mode."
   (let ((name-prefix (string-trim-right (symbol-name mode) (rx "mode" eos)))
         (tags-var (tempo-mode-tags-var mode)))
     `(progn
@@ -144,6 +148,9 @@ also attempt to refresh buffers with lisp-interaction-mode.  "
            (when (and (derived-mode-p ',mode) tempo-mode)
              (tempo-mode -1)
              (tempo-mode 1)))))))
+
+;;;###autoload
+(put 'tempo-mode-define-templates #'lisp-indent-function 1)
 
 
 ;;;; PROVIDE
