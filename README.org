@@ -1,0 +1,2 @@
+* tempo-mode
+  Easier tempo definition and usage.  See *Commentary*.
