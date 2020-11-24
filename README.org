@@ -22,8 +22,8 @@
         ("let" :function some-function))
 
       (skempo-mode-define-templates lisp-interaction-mode
-        ;; This will override emacs-lisp's "defun", but you can always call
-        ;; emacs-lisp's "defun" by calling
+        ;; This will override emacs-lisp's "defvar", but you can always call
+        ;; emacs-lisp's "defvar" by calling
         ;; skempo-mode-complete-tag-or-call-on-region
         ("defvar" (:tempo nil "Docstring")
          "(defvar var" p n> r> ")")))
