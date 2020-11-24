@@ -1,30 +1,30 @@
-The following is an old readme.  I'm going to change this package very soon.
-
-* Tempo-Mode
-  Easier tempo definition and usage.  See *Commentary*.
+* Skempo-Mode
+  A futile attempt to fuse skeleton, tempo and abbrev.  See *Commentary*.
 * Example
   #+begin_src emacs-lisp
-    (use-package tempo-mode
-      :hook ((emacs-lisp-mode-hook lisp-interaction-mode-hook) . tempo-mode)
+    (use-package skempo-mode
+      :hook ((emacs-lisp-mode-hook lisp-interaction-mode-hook) . skempo-mode)
 
       :bind
-      (:map tempo-mode-map
-            ("C-z" . tempo-mode-complete-tag-or-call-on-region)
+      (:map skempo-mode-map
+            ("C-z" . skempo-mode-complete-tag-or-call-on-region)
             ("M-g M-e" . tempo-forward-mark)
             ("M-g M-a" . tempo-backward-mark))
 
       :config
-      (tempo-mode-define-templates emacs-lisp-mode
-        ("var"
-         '("(defvar " (string-trim-right (buffer-name) (rx ".el" eos)) "-" p n>
-           r> ")"))
-        ("fun"
-         '("(defun " (string-trim-right (buffer-name) (rx ".el" eos)) "-" p " (" p ")" n>
-           r> ")"))
-        ("fn" '("(lambda (" p ") " r> ")"))
-        ("let" '("(let ((" p "))" n> r> ")")))
+      (skempo-mode-define-templates emacs-lisp-mode
+        ("defvar" :tempo
+         "(defvar " (string-trim-right (buffer-name) (rx ".el" eos)) "-" p n>
+         r> ")")
+        ("defun" (:skeleton :abbrev "Docstring") "Name: "
+         "(defun " str " (" @ - ")" \n
+         @ _ ")" \n)
+        ("let" :function some-function))
 
-      (tempo-mode-define-templates lisp-interaction-mode
-        ("var" '("(defvar var" p n> r> ")"))
-        ("fun" '("(defun fun" p " (" p ")" n> r> ")"))))
+      (skempo-mode-define-templates lisp-interaction-mode
+        ;; This will override emacs-lisp's "defun", but you can always call
+        ;; emacs-lisp's "defun" by calling
+        ;; skempo-mode-complete-tag-or-call-on-region
+        ("defvar" (:tempo nil "Docstring")
+         "(defvar var" p n> r> ")")))
   #+end_src
