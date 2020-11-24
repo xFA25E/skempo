@@ -23,22 +23,23 @@
 
 ;;; Commentary:
 
-;; This is an attempt to fuse skeleton, tempo and abbrev.  Emacs has excellent
-;; support for templates, but they are not 100% featureful.  Tempo has a good
-;; "jumping after expansion" and text completion mechanisms.  Skeleton has a
-;; good support for recursive templates and abbrev.  This package tries to
-;; balance each-other weaknesses by giving a tempo-jumping and completion
-;; capability for skeleton and abbrev support for tempo.
+;; This is an attempt to fuse skeleton, tempo and abbrev.  Emacs has
+;; excellent support for templates, but they are not 100% featureful.
+;; Tempo has a good "jumping after expansion" and text completion
+;; mechanisms.  Skeleton has a good support for recursive templates
+;; and abbrev.  This package tries to balance each-other weaknesses by
+;; giving a tempo-jumping and completion capability for skeleton and
+;; abbrev support for tempo.
 ;;
 ;; The main symbols of interests are: skempo-mode,
-;; skempo-mode-complete-tag-or-call-on-region and skempo-mode-define-templates.
-;; See their docstrings.
+;; skempo-mode-complete-tag-or-call-on-region and
+;; skempo-mode-define-templates.  See their docstrings.
 ;;
-;; Also, you should use tempo's tempo-forward-mark and tempo-backward-mark for
-;; jumping.
+;; Also, you should use tempo's tempo-forward-mark and
+;; tempo-backward-mark for jumping.
 ;;
-;; This package also cleans up some old tempo's code for mark insersion and
-;; completion.
+;; This package also cleans up some old tempo's code for mark
+;; insersion and completion.
 
 ;;; Code:
 
@@ -105,7 +106,7 @@ Set to nil removed markers.  This function is used as an :after
 advice to `TEMPO-INSERT-MARK', because the original function does
 not remove duplicate elements and if the buffer gets smaller,
 markers could point to the same location.  We don't want that,
-because a lot of markers can slow down emacs.
+because a lot of markers can slow down Emacs.
 
 HACK! This function is relying on `CL-DELETE-DUPLICATES' keeping
 all the right arguments in compare function.  So, we can
@@ -150,9 +151,9 @@ completion."
         (advice-add 'tempo-display-completions :override #'skempo-mode-display-completions)
         (advice-add 'tempo-insert-mark :after #'skempo-mode-delete-duplicate-markers)
         (thread-last (parent-mode-list major-mode)
-               (seq-map #'skempo-mode-tags-var)
-               (seq-filter #'boundp)
-               (seq-do #'tempo-use-tag-list))
+          (seq-map #'skempo-mode-tags-var)
+          (seq-filter #'boundp)
+          (seq-do #'tempo-use-tag-list))
         (add-hook 'skeleton-end-hook #'skempo-mode-add-skeleton-markers))
 
     ;; disabled
@@ -191,7 +192,7 @@ The above will define two tempo templates with tags \"var\" and
 `LISP-INTERACTION-SKEMPO-TAGS' variable.  Two templates will have
 names \"lisp-interaction-var\" and \"lisp-interaction-fun\"
 respectively.  It will also attempt to refresh buffers with
-lisp-interaction-mode.
+`LISP-INTERACTION-MODE'.
 
 A second argument :tempo is a shorthand for writing \(:tempo nil
 \"\").  Instead of :tempo you could write :skeleton or :function.
