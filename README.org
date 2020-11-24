@@ -1,3 +1,5 @@
+The following is an old readme.  I'm going to change this package very soon.
+
 * Tempo-Mode
   Easier tempo definition and usage.  See *Commentary*.
 * Example
