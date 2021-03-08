@@ -3,9 +3,7 @@
 * Example
   #+begin_src emacs-lisp
     (use-package skempo
-      :hook
-      (after-init . skempo-advice-mode)
-      ((emacs-lisp-mode lisp-interaction-mode) . skempo-mode)
+      :hook ((emacs-lisp-mode lisp-interaction-mode) . skempo-mode)
 
       :bind
       (:map skempo-mode-map
@@ -14,6 +12,8 @@
             ("M-g M-a" . skempo-backward-mark))
 
       :config
+      (skempo-advice-mode)
+
       ;; Multiple modes!
       (skempo-define-tempo (let :tag t :abbrev t :mode (emacs-lisp-mode lisp-mode))
         "(let ((" p "))" n> r> ")")
