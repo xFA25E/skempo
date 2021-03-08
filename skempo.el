@@ -104,14 +104,14 @@ package) and shiny `COMPLETING-READ' interface."
   (setf (alist-get tag-list tempo-local-tags nil t) nil))
 
 (defun skempo--insert-mark (marker)
-  "Insert a marker to `tempo-marks' while keeping it sorted.
+  "Insert a `MARKER' to `tempo-marks' while keeping it sorted.
 Remove duplicate marks from `TEMPO-MARKS'.  Set to nil removed
 markers.  This function is used as an :override advice to
 `TEMPO-INSERT-MARK', because the original function does not
 remove duplicate elements.  Duplicate markers appear when the
 buffer gets smaller, markers start pointing to the same location.
 We don't want that, because a lot of useless markers can slow
-down Emacs. "
+down Emacs."
   (if (not tempo-marks)
       (setq tempo-marks (list marker))
     (let ((markers tempo-marks))
@@ -143,7 +143,7 @@ down Emacs. "
 (defun skempo--add-tag (tag template &optional tag-list)
   "Add a `TEMPLATE' `TAG' to `TAG-LIST' or to `TEMPO-TAGS'.
 It is an :override function for `TEMPO-ADD-TAG'.  The original
-function does not update identical tags.  "
+function does not update identical tags."
   (interactive "sTag: \nCTemplate: ")
   (let ((tag-list (or tag-list 'tempo-tags)))
     (if-let ((value (assoc tag (symbol-value tag-list))))
@@ -166,6 +166,7 @@ If it fails to find a suitable tag, provide template completion."
     (unless (tempo-complete-tag)
       (tempo-display-completions "" (tempo-build-collection)))))
 
+;;;###autoload
 (define-minor-mode skempo-advice-mode
   "Override some tempo function and add skeleton hook.
 New functions enhance default tempo functions without changing
@@ -321,7 +322,7 @@ Example:
 
 ;;;###autoload
 (defmacro skempo-define-function (name-and-args function)
-  "Define function template.
+  "Define `FUNCTION' template.
 See `SKEMPO-DEFINE-TEMPO' for explanation of `NAME-AND-ARGS'.  It ignores
 `:docstring' option, for obvious reasons.
 
@@ -329,7 +330,7 @@ The main purpose of this macro, is to create tempo tags and
 abbrevs for existing skeleton templates, such as `sh-case'.
 
 Example:
-\(skempo-define-function (shcase :tag t :mode sh-mode)
+\(skempo-define-function (shcase :tag t :mode `sh-mode')
   sh-case)"
   (let ((symbol (gensym "fn")))
     (skempo--common-form
@@ -346,5 +347,5 @@ Example:
 
 ;;;; PROVIDE
 
-(provide 'skempo-mode)
-;;; skempo-mode.el ends here
+(provide 'skempo)
+;;; skempo.el ends here
