@@ -2,10 +2,10 @@
   A futile attempt to fuse skeleton, tempo and abbrev.  See *Commentary*.
 * Example
   #+begin_src emacs-lisp
-    (leaf skempo
+    (use-package skempo
       :hook
-      (after-init-hook . skempo-advice-mode)
-      ((emacs-lisp-mode-hook lisp-interaction-mode-hook) . skempo-mode)
+      (after-init . skempo-advice-mode)
+      ((emacs-lisp-mode lisp-interaction-mode) . skempo-mode)
 
       :bind
       (:map skempo-mode-map
