@@ -30,12 +30,11 @@
         r> ")")
 
       ;; Define tags and abbrevs for existing skeletons!
-      (skempo-define-tempo (shcase :tag t :abbrev t :mode sh-mode)
+      (skempo-define-function (shcase :tag t :abbrev t :mode sh-mode)
         sh-case)
 
       ;; This will override emacs-lisp's "defvar", but you can always call it with
       ;; skempo-complete-tag-or-call-on-region
-
       (skempo-define-tempo (defvar :tag t :mode lisp-interaction-mode)
         "(defvar var" p n> r> ")"))
   #+end_src
