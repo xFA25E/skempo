@@ -51,6 +51,7 @@
 (require 'mode-local)
 (require 'tempo)
 (require 'skeleton)
+(require 'cl-macs)
 
 
 ;;;; VARIABLES
