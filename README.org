@@ -1,40 +1,68 @@
-* Skempo
-  A futile attempt to fuse skeleton, tempo and abbrev.  See *Commentary*.
-* Example
-  #+begin_src emacs-lisp
-    (use-package skempo
-      :hook ((emacs-lisp-mode lisp-interaction-mode) . skempo-mode)
+#+TITLE: Skempo
 
-      :bind
-      (:map skempo-mode-map
-            ("C-z" . skempo-complete-tag-or-call-on-region)
-            ("M-g M-e" . skempo-forward-mark)
-            ("M-g M-a" . skempo-backward-mark))
+This is an attempt to improve Emacs built-in /skeleton/ and /tempo/ templates.
+It tries to make a unified syntax for template definitions.  Adds *tags* and
+*marks* support for /skeleton/ and *abbrev* support for /tempo/.
 
-      :config
-      (skempo-advice-mode)
+Every symbol is well documented.  See *Commentary* and *documentation strings*.
 
-      ;; Multiple modes!
-      (skempo-define-tempo (let :tag t :abbrev t :mode (emacs-lisp-mode lisp-mode))
-        "(let ((" p "))" n> r> ")")
+* Usage
 
-      ;; Skeletons too! With mark jumping!
-      (skempo-define-skeleton (defun :tag t :abbrev t :mode emacs-lisp-mode)
-        "Name: "
-        "(defun " str " (" @ - ")" \n
-        @ _ ")" \n)
+** Define templates
+   #+begin_src emacs-lisp
+     ;; Multiple modes!
+     (skempo-define-tempo (let :tag t :abbrev t :mode (emacs-lisp-mode lisp-mode))
+       "(let ((" p "))" n> r> ")")
 
-      ;; Clever tempo templates!
-      (skempo-define-tempo (defvar :tag t :abbrev t :mode emacs-lisp-mode)
-        "(defvar " (string-trim-right (buffer-name) (rx ".el" eos)) "-" p n>
-        r> ")")
+     ;; Skeletons too! With mark jumping!
+     (skempo-define-skeleton (defun :tag t :abbrev t :mode emacs-lisp-mode)
+       "Name: "
+       "(defun " str " (" @ - ")" \n
+       @ _ ")" \n)
 
-      ;; Define tags and abbrevs for existing skeletons!
-      (skempo-define-function (shcase :tag t :abbrev t :mode sh-mode)
-        sh-case)
+     ;; Clever tempo templates!
+     (skempo-define-tempo (defvar :tag t :abbrev t :mode emacs-lisp-mode)
+       "(defvar " (string-trim-right (buffer-name) (rx ".el" eos)) "-" p n>
+       r> ")")
 
-      ;; This will override emacs-lisp's "defvar", but you can always call it with
-      ;; skempo-complete-tag-or-call-on-region
-      (skempo-define-tempo (defvar :tag t :mode lisp-interaction-mode)
-        "(defvar var" p n> r> ")"))
-  #+end_src
+     ;; Define tags and abbrevs for existing skeletons and tempo templates!
+     (skempo-define-function (shcase :tag t :abbrev t :mode sh-mode)
+       sh-case)
+
+     ;; This will override emacs-lisp's "defvar", but you can always call it by
+     ;; function name (or by tag/abbrev if they were defined).
+     (skempo-define-tempo (defvar :tag t :mode lisp-interaction-mode)
+       "(defvar var" p n> r> ")")
+   #+end_src
+
+** Call templates
+   #+begin_src emacs-lisp
+     (use-package skempo
+       :hook ((emacs-lisp-mode lisp-interaction-mode) . skempo-mode)
+       :custom
+       (skempo-completing-read t)
+       (skempo-delete-duplicate-marks t)
+       (skempo-update-identical-tags t)
+       (skempo-skeleton-marks-support t)
+       (skempo-always-create-tag t)
+       (skempo-always-create-abbrev t)
+       (skempo-mode-lighter " Sk")
+       :bind
+       (:map skempo-mode-map
+             ("C-z" . skempo-complete-tag-or-call-on-region)
+             ("M-g M-e" . skempo-forward-mark)
+             ("M-g M-a" . skempo-backward-mark)))
+   #+end_src
+
+* What is ~:tag~ anyway?
+  Tempo has a concept of a *tag*.  It is a word that triggers the expansion of a
+  template with ~tempo-complete-tag~.  It is similar to the expansion name in
+  Yasnippet.
+
+* Possible reasons to use it over Yasnippet?
+  - Define templates in e-lisp, as opposed to some external file.
+  - Emacs has an excellent reader, there is no need for new language.
+  - You like built-in packages.
+
+* To do
+  - write tests

@@ -3,7 +3,7 @@
 ;; Copyright (C) 2020  Valeriy Litkovskyy
 
 ;; Author: Valeriy Litkovskyy
-;; Keywords: convenience
+;; Keywords: abbrev, convenience
 ;; Version: 0.1.0
 ;; URL: https://github.com/xFA25E/skempo
 ;; Package-Requires: ((emacs "25.1") (parent-mode "2.3"))
@@ -23,75 +23,150 @@
 
 ;;; Commentary:
 
-;; This is an attempt to fuse skeleton, tempo and abbrev.  Emacs has
-;; excellent support for templates, but they are not 100% featureful.
-;; Tempo has a good "jumping after expansion" and text completion
-;; mechanisms.  Skeleton has a good support for recursive templates
-;; and abbrev.  This package tries to balance each-other weaknesses by
-;; giving a tempo-jumping and completion capability for skeleton and
-;; abbrev support for tempo.
-;;
-;; The main symbols of interests are: skempo-mode, skempo-advice-mode,
-;; skempo-complete-tag-or-call-on-region, skempo-forward-mark,
-;; skempo-backward-mark, skempo-define-tempo, skempo-define-skeleton
-;; and skempo-define-function.  See their docstrings.
-;;
-;; This package also cleans up some old tempo's and skeleton's code
-;; with skempo-advice-mode.
+;; This is an attempt to fuse skeleton, tempo and abbrev.  Emacs has excellent
+;; support for templates, but they are not 100% feature full.  Tempo has a good
+;; "jumping after expansion" and text completion mechanisms.  Skeleton has a
+;; good support for iterative templates and abbrev.  This package tries to
+;; balance each-other weaknesses by giving a tempo-jumping and completion
+;; capability for skeleton and abbrev support for tempo.
+
+;; This package tries to preserve default behavior everywhere.  However, it
+;; provides a bunch of custom options to enhance bulit-in functions.  See,
+;; skempo customization group.
+
+;; Every symbol has an exhaustive documentation string.
+
+;; To define templates, use: skempo-define-tempo, skempo-define-skeleton and
+;; skempo-define-function.
+
+;; To use this package: enable skempo-mode in a buffer.  To expand tags, call
+;; skempo-complete-tag-or-call-on-region.  To jump on points of interest, use:
+;; skempo-forward-mark, skempo-backward-mark.
 
 ;;; Code:
 
-
 ;;;; REQUIRES
 
-(require 'seq)
-(require 'subr-x)
+(require 'cl-lib)
 (require 'derived)
-(require 'parent-mode)
 (require 'mode-local)
-(require 'tempo)
+(require 'parent-mode)
+(require 'pcase)
+(require 'rx)
 (require 'skeleton)
-(require 'cl-macs)
+(require 'subr-x)
+(require 'tempo)
 
-
-;;;; VARIABLES
+;;;; KEYMAP
 
 (defvar skempo-mode-map (make-sparse-keymap)
-  "Map used in `SKEMPO-MODE'.")
+  "Keymap for `SKEMPO-MODE'.")
 
-
+;;;; CUSTOMIZATION
+
+(defgroup skempo nil
+  "Skeleton+Tempo+Abbrev"
+  :group 'abbrev
+  :group 'tempo)
+
+(defcustom skempo-mode-lighter " Skempo"
+  "Lighter for `SKEMPO-MODE'."
+  :type '(string :tag "Lighter")
+  :risky t
+  :group 'skempo)
+
+(defcustom skempo-completing-read nil
+  "Override default `tempo-display-completions'.
+By default it uses a completion buffer to show completions.  This
+option overrides this function to use `completing-read' to select
+partial skempo tag or complete tag on region.
+
+If you wish to set this variable from ELisp code, you have to
+remove `SKEMPO--COMPLETE-TEMPLATE' advice from
+`tempo-display-completions' on NIL and add it as on :override
+advice on NON-NIL."
+  :type '(boolean :tag "Override?")
+  :set (lambda (variable value)
+         (if value
+             (advice-add 'tempo-display-completions :override #'skempo--complete-template)
+           (advice-remove 'tempo-display-completions #'skempo--complete-template))
+         (set-default variable value))
+  :group 'skempo)
+
+(defcustom skempo-delete-duplicate-marks nil
+  "Override default `tempo-insert-mark'.
+Marks are used to jump on points of interest in a template.  By
+default `tempo-insert-mark' does not remove duplicate marks.
+Duplicate marks might appear when the buffer shrinks and some of
+the marks start pointing to the same location.  This option tries
+to fix this by checking for duplicate marks every time the
+function is called.  Emacs might get slower with a lot of
+marks.
+
+If you want to set this option from ELisp, you have to remove
+`SKEMPO--INSERT-MARK' advice from `tempo-insert-mark' on NIL and
+add it as on :override advice on NON-NIL."
+  :type '(boolean :tag "Override?")
+  :set (lambda (variable value)
+         (if value
+             (advice-add 'tempo-insert-mark :override #'skempo--insert-mark)
+           (advice-remove 'tempo-insert-mark #'skempo--insert-mark))
+         (set-default variable value))
+  :group 'skempo)
+
+(defcustom skempo-update-identical-tags nil
+  "Override default `tempo-add-tag'.
+By default this function does not update tag functions.  If you
+want to set a new function to an existing tag, it will not work.
+This option overrides this behavior by always updating tags.
+
+If you want to set this option from ELisp, you have to remove
+`SKEMPO--ADD-TAG' advice from `tempo-add-tag' on NIL and add it
+as on :override advice on NON-NIL."
+  :type '(boolean :tag "Override?")
+  :set (lambda (variable value)
+         (if value
+             (advice-add 'tempo-add-tag :override #'skempo--add-tag)
+           (advice-remove 'tempo-add-tag #'skempo--add-tag))
+         (set-default variable value))
+  :group 'skempo)
+
+(defcustom skempo-skeleton-marks-support nil
+  "Add `tempo-marks' support for skeleton.
+This option enables jumping on skeleton points of interest with
+`SKEMPO-FORWARD-MARK' nda `SKEMPO-BACKWARD-MARK'.  It reuses
+`tempo-marks' functionality.  By default, skeleton does nothing
+with its points of interest.
+
+If you want to set this option from ELisp, you have to remove
+`SKEMPO--ADD-SKELETON-MARKERS' from `skeleton-end-hook' on NIL
+and add it on NON-NIL."
+  :type '(boolean :tag "Skeleton marks?")
+  :set (lambda (variable value)
+         (if value
+             (add-hook 'skeleton-end-hook #'skempo--add-skeleton-markers)
+           (remove-hook 'skeleton-end-hook #'skempo--add-skeleton-markers))
+         (set-default variable value))
+  :group 'skempo)
+
+(defcustom skempo-always-create-tag nil
+  "Generate tags by default for skempo templates.
+Note, you have to set this variable before you define a skempo
+template."
+  :type '(boolean :tag "Always tag?")
+  :group 'skempo)
+
+(defcustom skempo-always-create-abbrev nil
+  "Generate abbrevs by default for skempo templates.
+Note, you have to set this variable before you define a skempo
+template."
+  :type '(boolean :tag "Always abbrev?")
+  :group 'skempo)
+
 ;;;; FUNCTIONS
 
 (defalias 'skempo-forward-mark 'tempo-forward-mark)
 (defalias 'skempo-backward-mark 'tempo-backward-mark)
-
-(defun skempo--completion-names-for-tag-list (tag-list)
-  "Get completion names for templates from `TAG-LIST'."
-  (seq-map
-   (pcase-lambda (`(,tag . ,fn)) (format "%s (%s)" tag fn))
-   tag-list))
-
-(defun skempo--call-template-by-name (name)
-  "Expand template by `NAME'.
-`NAME' is in a form \"tag (function)\".  Parse a function and
-call it."
-  (when (string-match (rx "(" (group (*? any)) ")" eos) name)
-    (funcall (intern (match-string 1 name)))))
-
-
-(defun skempo--complete-template (string tag-list)
-  "An :override advice function for `TEMPO-DISPLAY-COMPLETIONS'.
-Show completion for `STRING' in a `TAG-LIST'.  After selection
-expand template.
-
-Rewritten because the original function uses an old way of
-displaying completions in a separate buffer, which does not work
-anyway.  Now it uses new (compared to the originial tempo
-package) and shiny `COMPLETING-READ' interface."
-  (let* ((tag-list-names (skempo--completion-names-for-tag-list tag-list))
-         (name (completing-read "Skempo: " tag-list-names nil t string)))
-    (delete-char (- (length string)))
-    (skempo--call-template-by-name name)))
 
 (defun skempo--tags-variable (mode)
   "Return a tempo tags variable's symbol for `MODE'."
@@ -103,6 +178,25 @@ package) and shiny `COMPLETING-READ' interface."
 (defun skempo--remove-tag-list (tag-list)
   "Remove `TAG-LIST' from `TEMPO-LOCAL-TAGS'."
   (setf (alist-get tag-list tempo-local-tags nil t) nil))
+
+(defun skempo--complete-template (string tag-list)
+  "An :override advice function for `TEMPO-DISPLAY-COMPLETIONS'.
+Show completion for `STRING' in a `TAG-LIST'.  After selection
+expand template.
+
+Rewritten because the original function uses an old way of
+displaying completions in a separate buffer, which is not
+clickable anyway.  Now it uses new (compared to the originial
+tempo package) and shiny `COMPLETING-READ' interface."
+  (cl-loop for (tag . fn) in tag-list
+           collect (format "%s (%s)" tag fn) into tag-names
+           finally
+           (let ((name (completing-read "Skempo: " tag-names nil t string)))
+             (delete-char (- (length string)))
+             (save-match-data
+               (pcase name
+                 ((rx "(" (let fn (*? any)) ")" eos)
+                  (funcall (intern fn))))))))
 
 (defun skempo--insert-mark (marker)
   "Insert a `MARKER' to `tempo-marks' while keeping it sorted.
@@ -138,7 +232,7 @@ down Emacs."
 
 (defun skempo--add-skeleton-markers ()
   "Add `SKELETON-POSITION' positions to `TEMPO-MARKS'."
-  (seq-doseq (position skeleton-positions)
+  (dolist (position skeleton-positions)
     (tempo-insert-mark (set-marker (make-marker) position))))
 
 (defun skempo--add-tag (tag template &optional tag-list)
@@ -152,39 +246,21 @@ function does not update identical tags."
       (set tag-list (cons (cons tag template) (symbol-value tag-list)))))
   (tempo-invalidate-collection))
 
-
 ;;;; COMMANDS
 
 ;;;###autoload
 (defun skempo-complete-tag-or-call-on-region ()
-  "Complete skempo tag or provide completion for a template around region.
-If the region is active, then provide a completion for a skempo
-template.  Otherwise, try to complete with `tempo-comelete-tag'.
-If it fails to find a suitable tag, provide template completion."
+  "Replacement for `tempo-complete-tag'.
+Complete skempo tag or provide completion for a template around
+region.  If the region is active, then provide a completion for a
+skempo template.  Otherwise, try to complete with
+`tempo-comelete-tag'.  If it fails to find a suitable tag,
+provide template completion."
   (interactive)
   (if (use-region-p)
-      (tempo-display-completions "" (tempo-build-collection))
+      (skempo--complete-template "" (tempo-build-collection))
     (unless (tempo-complete-tag)
-      (tempo-display-completions "" (tempo-build-collection)))))
-
-;;;###autoload
-(define-minor-mode skempo-advice-mode
-  "Override some tempo function and add skeleton hook.
-New functions enhance default tempo functions without changing
-their functionality.  Skeleton hook adds support for
-tempo-marks."
-
-  nil "" nil :global t
-  (if skempo-advice-mode
-      (progn
-        (advice-add 'tempo-display-completions :override #'skempo--complete-template)
-        (advice-add 'tempo-insert-mark :override #'skempo--insert-mark)
-        (advice-add 'tempo-add-tag :override #'skempo--add-tag)
-        (add-hook 'skeleton-end-hook #'skempo--add-skeleton-markers))
-    (advice-remove 'tempo-display-completions #'skempo--complete-template)
-    (advice-remove 'tempo-insert-mark #'skempo--insert-mark)
-    (advice-remove 'tempo-add-tag #'skempo--add-tag)
-    (remove-hook 'skeleton-end-hook #'skempo--add-skeleton-markers)))
+      (skempo--complete-template "" (tempo-build-collection)))))
 
 ;;;###autoload
 (define-minor-mode skempo-mode
@@ -192,18 +268,14 @@ tempo-marks."
 It helps initializing templates for a certain mode and provides a convinient
 macro for template definition.  Also, it provides some tempo enhancements for
 completion."
-  nil " Skempo" skempo-mode-map
-  (if skempo-mode
-      (thread-last (parent-mode-list major-mode)
-        (seq-map #'skempo--tags-variable)
-        (seq-filter #'boundp)
-        (seq-do #'tempo-use-tag-list))
-    (thread-last (parent-mode-list major-mode)
-      (seq-map #'skempo--tags-variable)
-      (seq-filter #'boundp)
-      (seq-do #'skempo--remove-tag-list))))
+  nil skempo-mode-lighter skempo-mode-map
+  (let* ((major-modes (parent-mode-list major-mode))
+         (tag-vars (mapcar #'skempo--tags-variable major-modes))
+         (bound-tag-vars (cl-delete-if-not #'boundp tag-vars)))
+    (if skempo-mode
+        (mapc #'tempo-use-tag-list bound-tag-vars)
+      (mapc #'skempo--remove-tag-list bound-tag-vars))))
 
-
 ;;;; MACROS
 
 (defun skempo--modes (mode)
@@ -223,44 +295,6 @@ completion."
   (if mode
       (derived-mode-abbrev-table-name mode)
     'global-abbrev-table))
-
-(defmacro skempo--common-form (form)
-  "Common form for skempo definition macros.
-Insert `FORM' in the common parts."
-  `(cl-destructuring-bind (name &key tag abbrev docstring mode &aux
-                                (docstring (or docstring ""))
-                                (name (symbol-name name))
-                                (modes (skempo--modes mode)))
-       (if (consp name-and-args) name-and-args (list name-and-args))
-     `(progn
-        ,@(mapcar
-
-           (lambda (mode)
-             (let ((mode-prefix (skempo--mode-prefix mode))
-                   (tags-var (skempo--tags-variable mode))
-                   (abbrev-table (skempo--abbrev-table mode))
-                   (template-symbol (gensym "template-symbol")))
-               `(progn
-                  ,(when (and tag mode)
-                     `(defvar ,tags-var nil))
-
-                  ,(when (and abbrev mode)
-                     `(define-abbrev-table ',abbrev-table nil))
-
-                  (let ((,template-symbol ,,form))
-                    (put ,template-symbol 'no-self-insert t)
-                    ,(when tag
-                       `(tempo-add-tag ,name ,template-symbol ',tags-var))
-                    ,(when abbrev
-                       `(define-abbrev ,abbrev-table ,name "" ,template-symbol :system t)))
-
-                  (dolist (buffer (buffer-list))
-                    (with-current-buffer buffer
-                      (when (and ,(if mode `(derived-mode-p ',mode) t) skempo-mode)
-                        (skempo-mode -1)
-                        (skempo-mode 1)))))))
-
-           modes))))
 
 ;;;###autoload
 (defmacro skempo-define-tempo (name-and-args &rest body)
@@ -296,9 +330,47 @@ Example:
                               :docstring \"defvar template\")
   \"(defvar \" (string-trim-right (buffer-name) (rx \".el\" eos)) \"-\" p n>
   r> \")\")"
-  (skempo--common-form
-   `(tempo-define-template ,(concat mode-prefix name) ',body
-                           nil ,docstring nil)))
+  (cl-destructuring-bind (name &key
+                               (tag skempo-always-create-tag)
+                               (abbrev skempo-always-create-abbrev)
+                               docstring mode
+                               &aux
+                               (docstring (or docstring ""))
+                               (name (symbol-name name))
+                               (modes (skempo--modes mode)))
+      (if (consp name-and-args) name-and-args (list name-and-args))
+    `(progn
+       ,@(mapcar
+
+          (lambda (mode)
+            (let ((mode-prefix (skempo--mode-prefix mode))
+                  (tags-var (skempo--tags-variable mode))
+                  (abbrev-table (skempo--abbrev-table mode))
+                  (template-symbol (gensym "template-symbol")))
+              `(progn
+                 ,(when (and tag mode)
+                    `(defvar ,tags-var nil))
+
+                 ,(when (and abbrev mode)
+                    `(define-abbrev-table ',abbrev-table nil))
+
+                 (let ((,template-symbol
+                        (tempo-define-template
+                         ,(concat mode-prefix name) ',body
+                         ,(when tag name) ,docstring ',tags-var)))
+
+                   (put ,template-symbol 'no-self-insert t)
+                   ,(when abbrev
+                      `(define-abbrev ,abbrev-table ,name "" ,template-symbol :system t)))
+
+                 ,(when tag
+                    `(dolist (buffer (buffer-list))
+                       (with-current-buffer buffer
+                         (when (and ,(if mode `(derived-mode-p ',mode) t) skempo-mode)
+                           (skempo-mode -1)
+                           (skempo-mode 1))))))))
+
+          modes))))
 
 ;;;###autoload
 (defmacro skempo-define-skeleton (name-and-args &rest body)
@@ -314,12 +386,49 @@ Example:
                                :docstring \"defun template\")
   \"(defun \" str \" (\" @ - \")\" \n
   @ _ \")\" \n)"
-  (let ((symbol (gensym "fn")))
-    (skempo--common-form
-     `(let ((,symbol (define-skeleton ,(intern (concat "skeleton-template-" mode-prefix name))
-                       ,docstring ,@body)))
-        (set ,symbol `((ignore (,,symbol))))
-        ,symbol))))
+  (cl-destructuring-bind (name &key
+                               (tag skempo-always-create-tag)
+                               (abbrev skempo-always-create-abbrev)
+                               docstring mode
+                               &aux
+                               (docstring (or docstring ""))
+                               (name (symbol-name name))
+                               (modes (skempo--modes mode)))
+      (if (consp name-and-args) name-and-args (list name-and-args))
+    `(progn
+       ,@(mapcar
+
+          (lambda (mode)
+            (let ((mode-prefix (skempo--mode-prefix mode))
+                  (tags-var (skempo--tags-variable mode))
+                  (abbrev-table (skempo--abbrev-table mode))
+                  (template-symbol (gensym "template-symbol")))
+              `(progn
+                 ,(when (and tag mode)
+                    `(defvar ,tags-var nil))
+
+                 ,(when (and abbrev mode)
+                    `(define-abbrev-table ',abbrev-table nil))
+
+                 (let ((,template-symbol
+                        (define-skeleton
+                          ,(intern (concat "skeleton-template-" mode-prefix name))
+                          ,docstring ,@body)))
+
+                   (set ,template-symbol '((ignore (,template-symbol))))
+                   ,(when tag
+                      `(tempo-add-tag ,name ,template-symbol ',tags-var))
+                   ,(when abbrev
+                      `(define-abbrev ,abbrev-table ,name "" ,template-symbol :system t)))
+
+                 ,(when tag
+                    `(dolist (buffer (buffer-list))
+                       (with-current-buffer buffer
+                         (when (and ,(if mode `(derived-mode-p ',mode) t) skempo-mode)
+                           (skempo-mode -1)
+                           (skempo-mode 1))))))))
+
+          modes))))
 
 ;;;###autoload
 (defmacro skempo-define-function (name-and-args function)
@@ -331,13 +440,44 @@ The main purpose of this macro, is to create tempo tags and
 abbrevs for existing skeleton templates, such as `sh-case'.
 
 Example:
-\(skempo-define-function (shcase :tag t :mode `sh-mode')
-  sh-case)"
-  (let ((symbol (gensym "fn")))
-    (skempo--common-form
-     `(let ((,symbol ',function))
-        (set ,symbol `((ignore (,,symbol))))
-        ,symbol))))
+\(skempo-define-function (shcase :tag t :abbrev t :mode `sh-mode')
+  `sh-case')"
+  (cl-destructuring-bind (name &key
+                               (tag skempo-always-create-tag)
+                               (abbrev skempo-always-create-abbrev)
+                               mode
+                               &aux
+                               (name (symbol-name name))
+                               (modes (skempo--modes mode)))
+      (if (consp name-and-args) name-and-args (list name-and-args))
+    `(progn
+       ,@(mapcar
+
+          (lambda (mode)
+            (let ((tags-var (skempo--tags-variable mode))
+                  (abbrev-table (skempo--abbrev-table mode)))
+              `(progn
+                 ,(when (and tag mode)
+                    `(defvar ,tags-var nil))
+
+                 ,(when (and abbrev mode)
+                    `(define-abbrev-table ',abbrev-table nil))
+
+                 (put ',function 'no-self-insert t)
+                 (set ',function '((ignore (,function))))
+                 ,(when tag
+                    `(tempo-add-tag ,name ',function ',tags-var))
+                 ,(when abbrev
+                    `(define-abbrev ,abbrev-table ,name "" ',function :system t))
+
+                 ,(when tag
+                    `(dolist (buffer (buffer-list))
+                       (with-current-buffer buffer
+                         (when (and ,(if mode `(derived-mode-p ',mode) t) skempo-mode)
+                           (skempo-mode -1)
+                           (skempo-mode 1))))))))
+
+          modes))))
 
 ;;;###autoload
 (progn
@@ -345,7 +485,6 @@ Example:
   (put 'skempo-define-skeleton 'lisp-indent-function 1)
   (put 'skempo-define-function 'lisp-indent-function 1))
 
-
 ;;;; PROVIDE
 
 (provide 'skempo)
