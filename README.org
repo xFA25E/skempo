@@ -63,6 +63,3 @@ Every symbol is well documented.  See *Commentary* and *documentation strings*.
   - Define templates in e-lisp, as opposed to some external file.
   - Emacs has an excellent reader, there is no need for new language.
   - You like built-in packages.
-
-* To do
-  - write tests
