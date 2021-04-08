@@ -2,7 +2,7 @@
 
 ;; Copyright (C) 2020  Valeriy Litkovskyy
 
-;; Author: Valeriy Litkovskyy
+;; Author: Valeriy Litkovskyy <vlr.ltkvsk@protonmail.com>
 ;; Keywords: abbrev, convenience
 ;; Version: 0.1.0
 ;; URL: https://github.com/xFA25E/skempo
