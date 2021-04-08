@@ -259,8 +259,7 @@ provide template completion."
   (interactive)
   (if (use-region-p)
       (skempo--complete-template "" (tempo-build-collection))
-    (unless (tempo-complete-tag)
-      (skempo--complete-template "" (tempo-build-collection)))))
+    (tempo-complete-tag)))
 
 ;;;###autoload
 (define-minor-mode skempo-mode
