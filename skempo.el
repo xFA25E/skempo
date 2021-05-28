@@ -243,8 +243,8 @@ function does not update identical tags."
   (let ((tag-list (or tag-list 'tempo-tags)))
     (if-let ((value (assoc tag (symbol-value tag-list))))
         (setcdr value template)
-      (set tag-list (cons (cons tag template) (symbol-value tag-list)))))
-  (tempo-invalidate-collection))
+      (set tag-list (cons (cons tag template) (symbol-value tag-list))))
+    (tempo-invalidate-collection (eq tag-list 'tempo-tags))))
 
 ;;;; COMMANDS
 
