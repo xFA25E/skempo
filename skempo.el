@@ -128,7 +128,9 @@ as on :override advice on NON-NIL."
          (if value
              (advice-add 'tempo-add-tag :override #'skempo--add-tag)
            (advice-remove 'tempo-add-tag #'skempo--add-tag))
-         (set-default variable value))
+         (set-default variable value)
+         (when (<= 28 emacs-major-version)
+           (message "skempo-update-identical-tags is obsolete since emacs 28")))
   :group 'skempo)
 
 (defcustom skempo-skeleton-marks-support nil
