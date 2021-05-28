@@ -65,7 +65,7 @@
 ;;;; CUSTOMIZATION
 
 (defgroup skempo nil
-  "Skeleton+Tempo+Abbrev"
+  "Skeleton+Tempo+Abbrev."
   :group 'abbrev
   :group 'tempo)
 
@@ -269,7 +269,9 @@ provide template completion."
 It helps initializing templates for a certain mode and provides a convinient
 macro for template definition.  Also, it provides some tempo enhancements for
 completion."
-  nil skempo-mode-lighter skempo-mode-map
+  :init-value nil
+  :lighter skempo-mode-lighter
+  :keymap skempo-mode-map
   (let* ((major-modes (parent-mode-list major-mode))
          (tag-vars (mapcar #'skempo--tags-variable major-modes))
          (bound-tag-vars (cl-delete-if-not #'boundp tag-vars)))
