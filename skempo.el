@@ -60,7 +60,7 @@
 ;;;; KEYMAP
 
 (defvar skempo-mode-map (make-sparse-keymap)
-  "Keymap for `SKEMPO-MODE'.")
+  "Keymap for `skempo-mode'.")
 
 ;;;; CUSTOMIZATION
 
@@ -70,7 +70,7 @@
   :group 'tempo)
 
 (defcustom skempo-mode-lighter " Skempo"
-  "Lighter for `SKEMPO-MODE'."
+  "Lighter for `skempo-mode'."
   :type '(string :tag "Lighter")
   :risky t
   :group 'skempo)
@@ -82,9 +82,9 @@ option overrides this function to use `completing-read' to select
 partial skempo tag or complete tag on region.
 
 If you wish to set this variable from ELisp code, you have to
-remove `SKEMPO--COMPLETE-TEMPLATE' advice from
-`tempo-display-completions' on NIL and add it as on :override
-advice on NON-NIL."
+remove `skempo--complete-template' advice from
+`tempo-display-completions' on nil and add it as on :override
+advice on non-nil."
   :type '(boolean :tag "Override?")
   :set (lambda (variable value)
          (if value
@@ -104,8 +104,8 @@ function is called.  Emacs might get slower with a lot of
 marks.
 
 If you want to set this option from ELisp, you have to remove
-`SKEMPO--INSERT-MARK' advice from `tempo-insert-mark' on NIL and
-add it as on :override advice on NON-NIL."
+`skempo--insert-mark' advice from `tempo-insert-mark' on nil and
+add it as on :override advice on non-nil."
   :type '(boolean :tag "Override?")
   :set (lambda (variable value)
          (if value
@@ -121,8 +121,8 @@ want to set a new function to an existing tag, it will not work.
 This option overrides this behavior by always updating tags.
 
 If you want to set this option from ELisp, you have to remove
-`SKEMPO--ADD-TAG' advice from `tempo-add-tag' on NIL and add it
-as on :override advice on NON-NIL."
+`skempo--add-tag' advice from `tempo-add-tag' on nil and add it
+as on :override advice on non-nil."
   :type '(boolean :tag "Override?")
   :set (lambda (variable value)
          (if value
@@ -136,13 +136,13 @@ as on :override advice on NON-NIL."
 (defcustom skempo-skeleton-marks-support nil
   "Add `tempo-marks' support for skeleton.
 This option enables jumping on skeleton points of interest with
-`SKEMPO-FORWARD-MARK' nda `SKEMPO-BACKWARD-MARK'.  It reuses
+`skempo-forward-mark' and `skempo-backward-mark'.  It reuses
 `tempo-marks' functionality.  By default, skeleton does nothing
 with its points of interest.
 
 If you want to set this option from ELisp, you have to remove
-`SKEMPO--ADD-SKELETON-MARKERS' from `skeleton-end-hook' on NIL
-and add it on NON-NIL."
+`skempo--add-skeleton-markers' from `skeleton-end-hook' on nil
+and add it on non-nil."
   :type '(boolean :tag "Skeleton marks?")
   :set (lambda (variable value)
          (if value
@@ -171,25 +171,25 @@ template."
 (defalias 'skempo-backward-mark 'tempo-backward-mark)
 
 (defun skempo--tags-variable (mode)
-  "Return a tempo tags variable's symbol for `MODE'."
+  "Return a tempo tags variable's symbol for MODE."
   (when mode
     (intern (replace-regexp-in-string
              (rx "-mode" eos) "-skempo-tags"
              (symbol-name mode)))))
 
 (defun skempo--remove-tag-list (tag-list)
-  "Remove `TAG-LIST' from `TEMPO-LOCAL-TAGS'."
+  "Remove TAG-LIST from `tempo-local-tags'."
   (setf (alist-get tag-list tempo-local-tags nil t) nil))
 
 (defun skempo--complete-template (string tag-list)
-  "An :override advice function for `TEMPO-DISPLAY-COMPLETIONS'.
-Show completion for `STRING' in a `TAG-LIST'.  After selection
+  "An :override advice function for `tempo-display-completions'.
+Show completion for STRING in a TAG-LIST.  After selection
 expand template.
 
 Rewritten because the original function uses an old way of
 displaying completions in a separate buffer, which is not
 clickable anyway.  Now it uses new (compared to the originial
-tempo package) and shiny `COMPLETING-READ' interface."
+tempo package) and shiny `completing-read' interface."
   (cl-loop for (tag . fn) in tag-list
            collect (format "%s (%s)" tag fn) into tag-names
            finally
@@ -201,10 +201,10 @@ tempo package) and shiny `COMPLETING-READ' interface."
                   (funcall (intern fn))))))))
 
 (defun skempo--insert-mark (marker)
-  "Insert a `MARKER' to `tempo-marks' while keeping it sorted.
-Remove duplicate marks from `TEMPO-MARKS'.  Set to nil removed
+  "Insert a MARKER to `tempo-marks' while keeping it sorted.
+Remove duplicate marks from `tempo-marks'.  Set to nil removed
 markers.  This function is used as an :override advice to
-`TEMPO-INSERT-MARK', because the original function does not
+`tempo-insert-mark', because the original function does not
 remove duplicate elements.  Duplicate markers appear when the
 buffer gets smaller, markers start pointing to the same location.
 We don't want that, because a lot of useless markers can slow
@@ -233,13 +233,13 @@ down Emacs."
           (setcdr markers (cddr markers)))))))
 
 (defun skempo--add-skeleton-markers ()
-  "Add `SKELETON-POSITION' positions to `TEMPO-MARKS'."
+  "Add `skeleton-position' positions to `tempo-marks'."
   (dolist (position skeleton-positions)
     (tempo-insert-mark (set-marker (make-marker) position))))
 
 (defun skempo--add-tag (tag template &optional tag-list)
-  "Add a `TEMPLATE' `TAG' to `TAG-LIST' or to `TEMPO-TAGS'.
-It is an :override function for `TEMPO-ADD-TAG'.  The original
+  "Add a TEMPLATE TAG to TAG-LIST or to `tempo-tags'.
+It is an :override function for `tempo-add-tag'.  The original
 function does not update identical tags."
   (interactive "sTag: \nCTemplate: ")
   (let ((tag-list (or tag-list 'tempo-tags)))
@@ -282,19 +282,19 @@ completion."
 ;;;; MACROS
 
 (defun skempo--modes (mode)
-  "Normalize `MODE' argument."
+  "Normalize MODE argument."
   (cond ((consp mode) mode)
         (mode (list mode))
         (t '(nil))))
 
 (defun skempo--mode-prefix (mode)
-  "Return `MODE' name or empty string in NIL."
+  "Return MODE name or empty string in nil."
   (if mode
       (string-trim-right (symbol-name mode) (rx "mode" eos))
     ""))
 
 (defun skempo--abbrev-table (mode)
-  "Get abbrev table for `MODE' or `GLOBAL-ABBREV-TABLE' if NIL."
+  "Get abbrev table for MODE or `global-abbrev-table' if nil."
   (if mode
       (derived-mode-abbrev-table-name mode)
     'global-abbrev-table))
@@ -303,18 +303,18 @@ completion."
 (defmacro skempo-define-tempo (name-and-args &rest body)
   "Define a tempo template.
 This macro defines a new tempo template or updates the old one.
-`NAME-AND-ARGS' may be a symbol or a list.  If it is a list it
+NAME-AND-ARGS may be a symbol or a list.  If it is a list it
 may take the form (`NAME' [KEY VALUE]...) where each KEY can be
 one of `:tag', `:abbrev', `:docstring' or `:mode'.
 
-If `NAME-AND-ARGS' is a symbol then it is equivalent to `NAME'.
+If NAME-AND-ARGS is a symbol then it is equivalent to `NAME'.
 
 If KEY is `:tag', VALUE should be a boolean.  If VALUE is
-NON-NIL, then a tempo tag with `NAME' will be created for this
+non-nil, then a tempo tag with `NAME' will be created for this
 template.
 
 If KEY is `:abbrev', VALUE should be a boolean.  If VALUE is
-NON-NIL, then a `NAME' abbrev will be created for this template.
+non-nil, then a `NAME' abbrev will be created for this template.
 
 If KEY is `:docstring', VALUE should be a string.
 
@@ -324,8 +324,8 @@ will be created for these modes, otherwise they will be
 global (if `:tag' and `:abbrev' options were provided, of
 course).
 
-`BODY' is a sequence of tempo elements that will be passed as a
-list directly to `TEMPO-DEFINE-TEMPLATE's second argument.
+BODY is a sequence of tempo elements that will be passed as a
+list directly to `tempo-define-template's second argument.
 
 Example:
 \(skempo-define-tempo (defvar :tag t :abbrev t
@@ -378,10 +378,10 @@ Example:
 ;;;###autoload
 (defmacro skempo-define-skeleton (name-and-args &rest body)
   "Define skeleton template.
-See `SKEMPO-DEFINE-TEMPO' for explanation of `NAME-AND-ARGS'.
+See `skempo-define-tempo' for explanation of NAME-AND-ARGS.
 
-`BODY' is a sequence of skeleton elements that will be passed
-directly to `DEFINE-SKELETON'.
+BODY is a sequence of skeleton elements that will be passed
+directly to `define-skeleton'.
 
 Example:
 \(skempo-define-skeleton (defun :tag t :abbrev t
@@ -435,8 +435,8 @@ Example:
 
 ;;;###autoload
 (defmacro skempo-define-function (name-and-args function)
-  "Define `FUNCTION' template.
-See `SKEMPO-DEFINE-TEMPO' for explanation of `NAME-AND-ARGS'.  It ignores
+  "Define FUNCTION template.
+See `skempo-define-tempo' for explanation of NAME-AND-ARGS.  It ignores
 `:docstring' option, for obvious reasons.
 
 The main purpose of this macro, is to create tempo tags and
