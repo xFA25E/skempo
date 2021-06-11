@@ -418,7 +418,7 @@ Example:
                           ,(intern (concat "skeleton-template-" mode-prefix name))
                           ,docstring ,@body)))
 
-                   (set ,template-symbol '((ignore (,template-symbol))))
+                   (set ,template-symbol (list (list 'ignore (list ,template-symbol))))
                    ,(when tag
                       `(tempo-add-tag ,name ,template-symbol ',tags-var))
                    ,(when abbrev
