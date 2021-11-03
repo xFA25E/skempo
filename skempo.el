@@ -4,7 +4,7 @@
 
 ;; Author: Valeriy Litkovskyy <vlr.ltkvsk@protonmail.com>
 ;; Keywords: abbrev, convenience
-;; Version: 0.1.0
+;; Version: 0.1.1
 ;; URL: https://github.com/xFA25E/skempo
 ;; Package-Requires: ((emacs "25.1") (parent-mode "2.3"))
 
@@ -126,13 +126,15 @@ as on :override advice on non-nil."
   :type '(boolean :tag "Override?")
   :set (lambda (variable value)
          (if value
-             (progn
-               (advice-add 'tempo-add-tag :override #'skempo--add-tag)
-               (when (<= 28 emacs-major-version)
-                 (message "skempo-update-identical-tags is obsolete since emacs 28")))
+             (advice-add 'tempo-add-tag :override #'skempo--add-tag)
            (advice-remove 'tempo-add-tag #'skempo--add-tag))
          (set-default variable value))
   :group 'skempo)
+
+(make-obsolete-variable
+ 'skempo-update-identical-tags
+ "It is not required anymore, because bug was fixed."
+ "Emacs 28")
 
 (defcustom skempo-skeleton-marks-support nil
   "Add `tempo-marks' support for skeleton.
