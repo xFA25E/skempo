@@ -9,7 +9,7 @@ Every symbol is well documented.  See *Commentary* and *documentation strings*.
 * Usage
 
 ** Define templates
-You can find more *skempo* examples [[https://github.com/xFA25E/nixpkgs-config/blob/master/emacs/README.org#skempo-templates][here]].
+You can find more *skempo* examples [[https://github.com/xFA25E/nixpkgs-config/tree/master/emacs#skempo-1][here]].
 
 #+begin_src emacs-lisp
 ;; Multiple modes!
