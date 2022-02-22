@@ -4,7 +4,7 @@
 
 ;; Author: Valeriy Litkovskyy <vlr.ltkvsk@protonmail.com>
 ;; Keywords: abbrev, convenience
-;; Version: 0.1.2
+;; Version: 0.2.0
 ;; URL: https://github.com/xFA25E/skempo
 ;; Package-Requires: ((emacs "25.1") (parent-mode "2.3"))
 
@@ -279,212 +279,207 @@ completion."
 
 ;;;; MACROS
 
-(defun skempo--modes (mode)
-  "Normalize MODE argument."
-  (cond ((consp mode) mode)
-        (mode (list mode))
-        (t '(nil))))
+(defun skempo--define-tempo (function-symbol body &optional docstring)
+  "Define a tempo template with BODY.
+This will generate a function with FUNCTION-SYMBOL and
+DOCSTRING.
 
-(defun skempo--mode-prefix (mode)
-  "Return MODE name or empty string in nil."
-  (if mode
-      (string-trim-right (symbol-name mode) (rx "mode" eos))
-    ""))
+The main purpose of this function is to have a better controlled
+alternative to `tempo-define-template'."
+  (let ((template-symbol (gensym (symbol-name function-symbol))))
+    (set template-symbol body)
+    (defalias function-symbol
+      (lambda (&optional arg)
+        (interactive "*P")
+        (tempo-insert-template template-symbol (xor tempo-insert-region arg)))
+      docstring)))
 
-(defun skempo--abbrev-table (mode)
+(defun skempo--define-skeleton (function-symbol body &optional docstring)
+  "Define a skeleton template with BODY.
+This will generate a function with FUNCTION-SYMBOL and
+DOCSTRING.
+
+The main purpose of this function is to have a better controlled
+alternative to `define-skeleton', especially because it is a
+function instead of a macro."
+  (defalias function-symbol
+    (lambda (&optional str arg)
+      (interactive "*P\nP")
+      (skeleton-proxy-new body str arg))
+    docstring))
+
+(defun skempo--define-function (function-symbol function &optional docstring)
+  "This will generate an alias to FUNCTION with FUNCTION-SYMBOL.
+DOCSTRING is used as a docstring to FUNCTION-SYMBOL."
+  (defalias function-symbol function docstring))
+
+(defun skempo--mode-name (mode)
+  "Get MODE name without a -mode suffix."
+  (string-trim-right (symbol-name mode) (rx "-mode" eos)))
+
+(defun skempo--function-name (name modes)
+  "Generate a name for a skempo template function.
+NAME and MODES are used to generate unique, but consistent
+names."
+  (let ((modes-part (mapconcat #'skempo--mode-name (sort modes #'string<) "-")))
+    (concat "skempo-template-" modes-part "-" name)))
+
+(defun skempo--mode-abbrev-table (mode)
   "Get abbrev table for MODE or `global-abbrev-table' if nil."
   (if mode
       (derived-mode-abbrev-table-name mode)
     'global-abbrev-table))
 
+(defun skempo--abbrev-table (mode)
+  "Get skempo abbrev table for MODE."
+  (intern (concat "skempo-" (symbol-name (skempo--mode-abbrev-table mode)))))
+
+(defun skempo--modes (mode)
+  "Normalize MODE argument."
+  (cond ((consp mode) mode)
+        ((null mode) nil)
+        ((symbolp mode) (list mode))))
+
 ;;;###autoload
-(defmacro skempo-define-tempo (name-and-args &rest body)
+(defun skempo-define (define-function name modes tag abbrev docstring body)
+  "Define a skempo template.
+
+DEFINE-FUNCTION is a function that takes a function symbol, BODY
+and DOCSTRING as its arguments.  It must define a new function
+with that symbol and that docstring.
+
+NAME is a string used in generating a function symbol, TAG and
+ABBREV.
+
+MODES is a list of modes for which TAG and ABBREV will be
+created.  If it's nil, TAG and ABBREV will be generated
+globally.
+
+TAG/ABBREV is a boolean, which indicates whether a tag/abbrev
+must be created for this template.
+
+DOCSTRING is a string (or nil) which will be supplied to
+DEFINE-FUNCTION.
+
+BODY is an arbitrary argument passed to DEFINE-FUNCTION."
+  (let* ((function-symbol (intern (skempo--function-name name modes)))
+         (modes (or modes '(nil))))
+    (funcall define-function function-symbol body docstring)
+    (put function-symbol 'no-self-insert t)
+
+    (when tag
+      (let ((tag-symbol (gensym (symbol-name function-symbol))))
+        (set tag-symbol `((ignore (,function-symbol))))
+        (dolist (mode modes)
+          (let ((var (skempo--tags-variable mode)))
+            (unless (boundp var)
+              (set var nil))
+            (tempo-add-tag name tag-symbol var)))
+        (dolist (buffer (buffer-list))
+          (with-current-buffer buffer
+            (when (and (or (equal '(nil) modes) (apply #'derived-mode-p modes))
+                       skempo-mode)
+              (skempo-mode -1)
+              (skempo-mode 1))))))
+
+    (when abbrev
+      (dolist (mode modes)
+        (let ((mode-table (skempo--mode-abbrev-table mode))
+              (table (skempo--abbrev-table mode)))
+          (define-abbrev-table mode-table nil)
+          (define-abbrev-table table nil :case-fixed t :skempo t)
+          (define-abbrev (symbol-value table) name "" function-symbol
+            :case-fixed t :system t :skempo t)
+
+          (let ((names nil))
+            (mapatoms (lambda (abbrev)
+                        (when (symbol-value abbrev)
+                          (push (symbol-name abbrev) names)))
+                      (symbol-value table))
+            (abbrev-table-put (symbol-value table) :regexp (regexp-opt names "\\_<\\(")))
+
+
+          (let ((parents (abbrev-table-get (symbol-value mode-table) :parents)))
+            (cl-pushnew (symbol-value table) parents :test #'eq)
+            (abbrev-table-put (symbol-value mode-table) :parents parents)))))
+
+    function-symbol))
+
+;;;###autoload
+(cl-defmacro skempo-define-tempo (name (&key mode tag abbrev docstring) &rest body)
   "Define a tempo template.
 This macro defines a new tempo template or updates the old one.
-NAME-AND-ARGS may be a symbol or a list.  If it is a list it
-may take the form (`NAME' [KEY VALUE]...) where each KEY can be
-one of `:tag', `:abbrev', `:docstring' or `:mode'.
+NAME is a symbol.  ARGS is a list of the form ([KEY VALUE]...)
+where each KEY can be one of :tag, :abbrev, :docstring or :mode.
 
-If NAME-AND-ARGS is a symbol then it is equivalent to `NAME'.
+If KEY is :tag, VALUE should be a boolean.  If VALUE is non-nil,
+then a tempo tag with NAME will be created for this template.
 
-If KEY is `:tag', VALUE should be a boolean.  If VALUE is
-non-nil, then a tempo tag with `NAME' will be created for this
-template.
+If KEY is :abbrev, VALUE should be a boolean.  If VALUE is
+non-nil, then a NAME abbrev will be created for this template.
 
-If KEY is `:abbrev', VALUE should be a boolean.  If VALUE is
-non-nil, then a `NAME' abbrev will be created for this template.
+If KEY is :docstring, VALUE should be a string.  It will be a
+docstring of the generated function.
 
-If KEY is `:docstring', VALUE should be a string.
-
-If KEY is `:mode', VALUE should be a list of modes or single
-mode.  If this option is provided, than a tempo tag and an abbrev
-will be created for these modes, otherwise they will be
-global (if `:tag' and `:abbrev' options were provided, of
-course).
+If KEY is :mode, VALUE should be a list of modes or single mode.
+If this option is provided, than a tempo tag and an abbrev will
+be created for these modes, otherwise they will be global (if
+:tag and :abbrev options were provided, of course).
 
 BODY is a sequence of tempo elements that will be passed as a
 list directly to `tempo-define-template's second argument.
 
 Example:
-\(skempo-define-tempo (defvar :tag t :abbrev t
-                              :mode emacs-lisp-mode
-                              :docstring \"defvar template\")
+\(skempo-define-tempo defvar (:mode `emacs-lisp-mode' :tag t :abbrev t
+                             :docstring \"defvar template\")
   \"(defvar \" (string-trim-right (buffer-name) (rx \".el\" eos)) \"-\" p n>
   r> \")\")"
-  (cl-destructuring-bind (name &key
-                               (tag skempo-always-create-tag)
-                               (abbrev skempo-always-create-abbrev)
-                               docstring mode
-                               &aux
-                               (docstring (or docstring ""))
-                               (name (symbol-name name))
-                               (modes (skempo--modes mode)))
-      (if (consp name-and-args) name-and-args (list name-and-args))
-    `(progn
-       ,@(mapcar
-
-          (lambda (mode)
-            (let ((mode-prefix (skempo--mode-prefix mode))
-                  (tags-var (skempo--tags-variable mode))
-                  (abbrev-table (skempo--abbrev-table mode))
-                  (template-symbol (gensym "template-symbol")))
-              `(progn
-                 ,(when (and tag mode)
-                    `(defvar ,tags-var nil))
-
-                 ,(when (and abbrev mode)
-                    `(define-abbrev-table ',abbrev-table nil))
-
-                 (let ((,template-symbol
-                        (tempo-define-template
-                         ,(concat mode-prefix name) ',body
-                         ,(when tag name) ,docstring ',tags-var)))
-
-                   (put ,template-symbol 'no-self-insert t)
-                   ,(when abbrev
-                      `(define-abbrev ,abbrev-table ,name "" ,template-symbol :system t)))
-
-                 ,(when tag
-                    `(dolist (buffer (buffer-list))
-                       (with-current-buffer buffer
-                         (when (and ,(if mode `(derived-mode-p ',mode) t) skempo-mode)
-                           (skempo-mode -1)
-                           (skempo-mode 1))))))))
-
-          modes))))
+  `(skempo-define #'skempo--define-tempo ,(symbol-name name) ',(skempo--modes mode)
+                  (or skempo-always-create-tag ,tag)
+                  (or skempo-always-create-abbrev ,abbrev)
+                  ,docstring ',body))
 
 ;;;###autoload
-(defmacro skempo-define-skeleton (name-and-args &rest body)
+(cl-defmacro skempo-define-skeleton (name (&key mode tag abbrev docstring) &rest body)
   "Define skeleton template.
-See `skempo-define-tempo' for explanation of NAME-AND-ARGS.
+See `skempo-define-tempo' for explanation of NAME, MODE, TAG,
+ABBREV and DOCSTRING.
 
 BODY is a sequence of skeleton elements that will be passed
 directly to `define-skeleton'.
 
 Example:
-\(skempo-define-skeleton (defun :tag t :abbrev t
-                               :mode (emacs-lisp-mode lisp-interaction-mode)
+\(skempo-define-skeleton defun (:mode (emacs-lisp-mode `lisp-interaction-mode')
+                               :tag t :abbrev t
                                :docstring \"defun template\")
   \"(defun \" str \" (\" @ - \")\" \n
   @ _ \")\" \n)"
-  (cl-destructuring-bind (name &key
-                               (tag skempo-always-create-tag)
-                               (abbrev skempo-always-create-abbrev)
-                               docstring mode
-                               &aux
-                               (docstring (or docstring ""))
-                               (name (symbol-name name))
-                               (modes (skempo--modes mode)))
-      (if (consp name-and-args) name-and-args (list name-and-args))
-    `(progn
-       ,@(mapcar
-
-          (lambda (mode)
-            (let ((mode-prefix (skempo--mode-prefix mode))
-                  (tags-var (skempo--tags-variable mode))
-                  (abbrev-table (skempo--abbrev-table mode))
-                  (template-symbol (gensym "template-symbol")))
-              `(progn
-                 ,(when (and tag mode)
-                    `(defvar ,tags-var nil))
-
-                 ,(when (and abbrev mode)
-                    `(define-abbrev-table ',abbrev-table nil))
-
-                 (let ((,template-symbol
-                        (define-skeleton
-                          ,(intern (concat "skeleton-template-" mode-prefix name))
-                          ,docstring ,@body)))
-
-                   (set ,template-symbol (list (list 'ignore (list ,template-symbol))))
-                   ,(when tag
-                      `(tempo-add-tag ,name ,template-symbol ',tags-var))
-                   ,(when abbrev
-                      `(define-abbrev ,abbrev-table ,name "" ,template-symbol :system t)))
-
-                 ,(when tag
-                    `(dolist (buffer (buffer-list))
-                       (with-current-buffer buffer
-                         (when (and ,(if mode `(derived-mode-p ',mode) t) skempo-mode)
-                           (skempo-mode -1)
-                           (skempo-mode 1))))))))
-
-          modes))))
+  `(skempo-define #'skempo--define-skeleton ,(symbol-name name) ',(skempo--modes mode)
+                  (or skempo-always-create-tag ,tag)
+                  (or skempo-always-create-abbrev ,abbrev)
+                  ,docstring ',body))
 
 ;;;###autoload
-(defmacro skempo-define-function (name-and-args function)
+(cl-defmacro skempo-define-function (name (&key mode tag abbrev docstring) function)
   "Define FUNCTION template.
-See `skempo-define-tempo' for explanation of NAME-AND-ARGS.  It ignores
-`:docstring' option, for obvious reasons.
+See `skempo-define-tempo' for explanation of NAME, MODE, TAG,
+ABBREV and DOCSTRING.
 
 The main purpose of this macro, is to create tempo tags and
 abbrevs for existing skeleton templates, such as `sh-case'.
 
 Example:
-\(skempo-define-function (shcase :tag t :abbrev t :mode `sh-mode')
-  `sh-case')"
-  (cl-destructuring-bind (name &key
-                               (tag skempo-always-create-tag)
-                               (abbrev skempo-always-create-abbrev)
-                               mode
-                               &aux
-                               (name (symbol-name name))
-                               (modes (skempo--modes mode)))
-      (if (consp name-and-args) name-and-args (list name-and-args))
-    `(progn
-       ,@(mapcar
-
-          (lambda (mode)
-            (let ((tags-var (skempo--tags-variable mode))
-                  (abbrev-table (skempo--abbrev-table mode)))
-              `(progn
-                 ,(when (and tag mode)
-                    `(defvar ,tags-var nil))
-
-                 ,(when (and abbrev mode)
-                    `(define-abbrev-table ',abbrev-table nil))
-
-                 (put ',function 'no-self-insert t)
-                 (set ',function '((ignore (,function))))
-                 ,(when tag
-                    `(tempo-add-tag ,name ',function ',tags-var))
-                 ,(when abbrev
-                    `(define-abbrev ,abbrev-table ,name "" ',function :system t))
-
-                 ,(when tag
-                    `(dolist (buffer (buffer-list))
-                       (with-current-buffer buffer
-                         (when (and ,(if mode `(derived-mode-p ',mode) t) skempo-mode)
-                           (skempo-mode -1)
-                           (skempo-mode 1))))))))
-
-          modes))))
+\(skempo-define-function shcase (:tag t :abbrev t :mode `sh-mode') `sh-case')"
+  `(skempo-define #'skempo--define-function ,(symbol-name name) ',(skempo--modes mode)
+                  (or skempo-always-create-tag ,tag)
+                  (or skempo-always-create-abbrev ,abbrev)
+                  ,docstring ',function))
 
 ;;;###autoload
 (progn
-  (put 'skempo-define-tempo 'lisp-indent-function 1)
-  (put 'skempo-define-skeleton 'lisp-indent-function 1)
-  (put 'skempo-define-function 'lisp-indent-function 1))
+  (put 'skempo-define-tempo 'lisp-indent-function 2)
+  (put 'skempo-define-skeleton 'lisp-indent-function 2)
+  (put 'skempo-define-function 'lisp-indent-function 2))
 
 ;;;; PROVIDE
 

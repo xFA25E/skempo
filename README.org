@@ -13,47 +13,50 @@ You can find more *skempo* examples [[https://github.com/xFA25E/nixpkgs-config/t
 
 #+begin_src emacs-lisp
 ;; Multiple modes!
-(skempo-define-tempo (let :tag t :abbrev t :mode (emacs-lisp-mode lisp-mode))
+(skempo-define-tempo let (:tag t :abbrev t :mode (emacs-lisp-mode lisp-mode))
   "(let ((" p "))" n> r> ")")
 
 ;; Skeletons too! With mark jumping!
-(skempo-define-skeleton (defun :tag t :abbrev t :mode emacs-lisp-mode)
+(skempo-define-skeleton defun (:tag t :abbrev t :mode emacs-lisp-mode)
   "Name: "
   "(defun " str " (" @ - ")" \n
   @ _ ")" \n)
 
 ;; Clever tempo templates!
-(skempo-define-tempo (defvar :tag t :abbrev t :mode emacs-lisp-mode)
+(skempo-define-tempo defvar (:tag t :abbrev t :mode emacs-lisp-mode)
   "(defvar " (string-trim-right (buffer-name) (rx ".el" eos)) "-" p n>
   r> ")")
 
 ;; Define tags and abbrevs for existing skeletons and tempo templates!
-(skempo-define-function (shcase :tag t :abbrev t :mode sh-mode)
+(skempo-define-function shcase (:tag t :abbrev t :mode sh-mode)
   sh-case)
 
 ;; This will override emacs-lisp's "defvar", but you can always call it by
 ;; function name (or by tag/abbrev if they were defined).
-(skempo-define-tempo (defvar :tag t :mode lisp-interaction-mode)
+(skempo-define-tempo defvar (:tag t :mode lisp-interaction-mode)
   "(defvar var" p n> r> ")")
 #+end_src
 
 ** Call templates
 #+begin_src emacs-lisp
-(use-package skempo
-             :hook ((emacs-lisp-mode lisp-interaction-mode) . skempo-mode)
-             :custom
-             (skempo-completing-read t)
-             (skempo-delete-duplicate-marks t)
-             (skempo-update-identical-tags t)
-             (skempo-skeleton-marks-support t)
-             (skempo-always-create-tag t)
-             (skempo-always-create-abbrev t)
-             (skempo-mode-lighter " Sk")
-             :bind
-             (:map skempo-mode-map
-                   ("C-z" . skempo-complete-tag-or-call-on-region)
-                   ("M-g M-e" . skempo-forward-mark)
-                   ("M-g M-a" . skempo-backward-mark)))
+(add-hook 'emacs-lisp-mode 'skempo-mode)
+(add-hook 'lisp-interaction-mode 'skempo-mode)
+
+(with-eval-after-load 'skempo
+  (easy-mmode-define-keymap
+   '(("\C-z" . skempo-complete-tag-or-call-on-region)
+     ("\M-g\M-e" . skempo-forward-mark)
+     ("\M-g\M-a" . skempo-backward-mark))
+   nil skempo-mode-map))
+
+(custom-set-variables
+ '(skempo-completing-read t)
+ '(skempo-delete-duplicate-marks t)
+ '(skempo-update-identical-tags t)
+ '(skempo-skeleton-marks-support t)
+ '(skempo-always-create-tag t)
+ '(skempo-always-create-abbrev t)
+ '(skempo-mode-lighter " Sk"))
 #+end_src
 
 * What is ~:tag~ anyway?
