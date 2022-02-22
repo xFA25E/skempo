@@ -193,15 +193,10 @@ Rewritten because the original function uses an old way of
 displaying completions in a separate buffer, which is not
 clickable anyway.  Now it uses new (compared to the originial
 tempo package) and shiny `completing-read' interface."
-  (cl-loop for (tag . fn) in tag-list
-           collect (format "%s (%s)" tag fn) into tag-names
-           finally
-           (let ((name (completing-read "Skempo: " tag-names nil t string)))
-             (delete-char (- (length string)))
-             (save-match-data
-               (pcase name
-                 ((rx "(" (let fn (*? any)) ")" eos)
-                  (funcall (intern fn))))))))
+  (let* ((tags (mapcar #'car tag-list))
+         (tag (completing-read "Skempo: " tags nil t string)))
+    (delete-char (- (length string)))
+    (tempo-insert-template (cdr (assoc tag tag-list)) nil)))
 
 (defun skempo--insert-mark (marker)
   "Insert a MARKER to `tempo-marks' while keeping it sorted.
