@@ -60,7 +60,7 @@
 ;;;; KEYMAP
 
 (defvar skempo-mode-map (make-sparse-keymap)
-  "Keymap for `skempo-mode'.")
+  "Keymap for command `skempo-mode'.")
 
 ;;;; CUSTOMIZATION
 
@@ -70,7 +70,7 @@
   :group 'tempo)
 
 (defcustom skempo-mode-lighter " Skempo"
-  "Lighter for `skempo-mode'."
+  "Lighter for command `skempo-mode'."
   :type '(string :tag "Lighter")
   :risky t
   :group 'skempo)
