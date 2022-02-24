@@ -321,8 +321,10 @@ DOCSTRING is used as a docstring to FUNCTION-SYMBOL."
   "Generate a name for a skempo template function.
 NAME and MODES are used to generate unique, but consistent
 names."
-  (let ((modes-part (mapconcat #'skempo--mode-name (sort modes #'string<) "-")))
-    (concat "skempo-template-" modes-part "-" name)))
+  (concat "skempo-template-"
+          (mapconcat (lambda (mode) (concat (skempo--mode-name mode) "-"))
+                     (sort modes #'string<) "")
+          name))
 
 (defun skempo--mode-abbrev-table (mode)
   "Get abbrev table for MODE or `global-abbrev-table' if nil."
