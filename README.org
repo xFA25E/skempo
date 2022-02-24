@@ -56,7 +56,8 @@ You can find more *skempo* examples [[https://github.com/xFA25E/nixpkgs-config/t
  '(skempo-skeleton-marks-support t)
  '(skempo-always-create-tag t)
  '(skempo-always-create-abbrev t)
- '(skempo-mode-lighter " Sk"))
+ '(skempo-mode-lighter " Sk")
+ '(skempo-enable-tempo-elements t))
 #+end_src
 
 * What is ~:tag~ anyway?
@@ -68,3 +69,65 @@ Yasnippet.
 - Define templates in e-lisp, as opposed to some external file.
 - Emacs has an excellent reader, there is no need for new language.
 - You like built-in packages.
+
+* Additional tempo elements
+This package provides ~skempo-tempo-user-elements~ function which can be enabled
+with ~skempo-enable-tempo-elements~ option.  It adds conditional and looping
+constructs similar to /skeleton/ ones, making skeleton pretty much obsolete.
+For example, the following snippets are equivalent:
+
+#+begin_src elisp
+(skempo-define-skeleton someskel ()
+  nil
+  "(:option"
+  ;; insert until empty string is given
+  ("Insert symbol: " " #:" str)
+  ")")
+
+(skempo-define-tempo sometemp ()
+  "(:option"
+  ;; insert until C-M-g key is pressed
+  (:while ("Insert symbol: " sym)
+          " #:" (s sym))
+  ")")
+#+end_src
+
+The main difference is in the abortion.  Skeleton aborts on empty string. I
+think that empty input is necessary, sometimes, so I choose the approach of
+binding a dedicate key for abortion.  This key is displayed in the prompt and
+can be customized with ~skempo-tempo-else-key~.
+
+Some more complicated behavior:
+
+#+begin_src elisp
+(skempo-define-skeleton someskel ()
+  nil
+  "(:option"
+  ;; insert until empty string is given
+  ("Insert symbol: " " #:" str)
+  & ")"
+  ;; or don't insert at all.  It is a hack that physically removes "(:option"
+  ;; string by deleting 8 characters if previous statements didn't move the
+  ;; point
+  | -8)
+
+(skempo-define-tempo sometemp ()
+  ;; If input was not aborted, start inserting
+  (:when ("Insert symbol: " sym)
+         "(:option #:" (s sym)
+         ;; Continue inserting until C-M-g is pressed
+         (:while ("Insert symbol: " sym)
+                 " #:" (s sym))
+         ")"))
+#+end_src
+
+There is also an ~:if~ element, that can execute *else* branch if input was
+aborted.
+
+#+begin_src elisp
+(skempo-define-tempo sometemp ()
+  (:if ("Insert symbol: " sym)
+       ;; Use l element to group elements together
+       (l "insert " (s sym))
+       "something else"))
+#+end_src

@@ -43,6 +43,10 @@
 ;; skempo-complete-tag-or-call-on-region.  To jump on points of interest, use:
 ;; skempo-forward-mark, skempo-backward-mark.
 
+;; This package also provides skeleton-like conditional and iterative elements
+;; to tempo.  Add skempo-tempo-user-elements to tempo-user-elements.  See
+;; skempo-tempo-user-elements documentation to learn about these extensions.
+
 ;;; Code:
 
 ;;;; REQUIRES
@@ -166,6 +170,22 @@ template."
 Note, you have to set this variable before you define a skempo
 template."
   :type '(boolean :tag "Always abbrev?")
+  :group 'skempo)
+
+(defcustom skempo-enable-tempo-elements nil
+  "Enable extra tempo elements.
+These elements add conditionals and looping support for tempo
+like those in skeleton, making skeleton pretty much obsolete.
+
+If you want to set this option from ELisp, you have to remove
+`skempo-tempo-user-elements' from `tempo-user-elements' on nil
+and add it on non-nil."
+  :type '(boolean :tag "Enable tempo elements?")
+  :set (lambda (variable value)
+         (if value
+             (add-hook 'tempo-user-elements #'skempo-tempo-user-elements)
+           (remove-hook 'tempo-user-elements #'skempo-tempo-user-elements))
+         (set-default variable value))
   :group 'skempo)
 
 ;;;; FUNCTIONS
@@ -482,6 +502,49 @@ Example:
   (put 'skempo-define-tempo 'lisp-indent-function 2)
   (put 'skempo-define-skeleton 'lisp-indent-function 2)
   (put 'skempo-define-function 'lisp-indent-function 2))
+
+;;;; TEMPO ELEMENTS
+
+(defvar skempo-tempo-else-key (kbd "C-M-g")
+  "Key used to execute else branch in tempo conditional.")
+
+(defun skempo-tempo--prompt (prompt)
+  "Make prompt for tempo conditional.
+PROMPT is preceded with `skempo-tempo-else-key'."
+  (concat "(" (key-description skempo-tempo-else-key) " to quit) " prompt))
+
+(defun skempo-tempo-user-elements (element)
+  "Support for conditional and looping tempo elements.
+The following forms are supported for ELEMENT:
+
+\(:if (PROMPT VAR) THEN ELSE)
+
+\(:when (PROMPT VAR) BODY...)
+
+\(:while (PROMPT VAR) BODY...)
+
+PROMPT is a string used to read value for VAR.  VAR is a tempo
+variable symbol.  Its value can be read with s, as usual.  BODY,
+THEN and ELSE are tempo elements.  To abort the execution of
+these elements, user must press `skempo-tempo-else-key'.
+
+The main purpose of this extension is to mimic skeleton
+conditionals and iterative templats.  Skeleton becomes pretty
+much obsolete with this extension."
+  (pcase element
+    (`(:if (,(and (pred stringp) prompt) ,(and (pred symbolp) var)) ,then ,else)
+     (let ((prompt (skempo-tempo--prompt prompt))
+           (map (make-sparse-keymap)))
+       (set-keymap-parent map minibuffer-local-map)
+       (define-key map skempo-tempo-else-key
+         (lambda () (interactive) (throw 'else else)))
+       (catch 'else
+         (tempo-save-named var (read-from-minibuffer prompt nil map))
+         then)))
+    (`(:when (,(and (pred stringp) prompt) ,(and (pred symbolp) var)) . ,body)
+     `(:if (,prompt ,var) (l ,@body) (l)))
+    (`(:while (,(and (pred stringp) prompt) ,(and (pred symbolp) var)) . ,body)
+     `(:when (,prompt ,var) ,@body ,element))))
 
 ;;;; PROVIDE
 
