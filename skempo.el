@@ -4,7 +4,7 @@
 
 ;; Author: Valeriy Litkovskyy <vlr.ltkvsk@protonmail.com>
 ;; Keywords: abbrev, convenience
-;; Version: 0.2.0
+;; Version: 0.2.1
 ;; URL: https://github.com/xFA25E/skempo
 ;; Package-Requires: ((emacs "25.1") (parent-mode "2.3"))
 
