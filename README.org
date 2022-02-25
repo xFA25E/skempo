@@ -131,3 +131,35 @@ aborted.
        (l "insert " (s sym))
        "something else"))
 #+end_src
+
+* Problems with abbrev expansion in lisp modes
+You might have problems with expansion on non word characters like ~*~ or ~-~ in
+lisp modes.  For example ~let*~ might trigger ~let~ expansion.  There are some
+possible solutions with trade-offs.
+
+** Disable expansion on non space characters for lisp modes
+#+begin_src elisp
+(let ((enable-fn (lambda () (or (eq this-command 'expand-abbrev)
+                                (eql ?\s last-command-event)))))
+  (dolist (mode '(lisp-mode emacs-lisp-mode))
+    (let ((table (symbol-value (skempo--abbrev-table mode))))
+      (abbrev-table-put table :enable-function enable-fn))))
+#+end_src
+
+This solution will disable automatic expansion on, for example, ~let*~ template.
+
+** Modify syntax for these characters to make them words
+#+begin_src elisp
+(defun modify-lisp-syntax-tables ()
+  (modify-syntax-entry ?* "w" (syntax-table))
+  (modify-syntax-entry ?- "w" (syntax-table)))
+
+(dolist (hook '(lisp-mode-hook emacs-lisp-mode-hook))
+  (add-hook hook #'modify-lisp-syntax-tables))
+#+end_src
+
+This solution will treat ~some-long-symbol*~ as a single word.  You can change
+only ~*~ character, but in that case ~let-~ will trigger ~let~.
+
+** Bind ~expand-abbrev~ on some key
+https://www.emacswiki.org/emacs/AbbrevMode#h5o-11
