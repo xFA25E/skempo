@@ -422,8 +422,9 @@ BODY is an arbitrary argument passed to DEFINE-FUNCTION."
           (define-abbrev (symbol-value table) name "" function-symbol
             :case-fixed t :system t :skempo t)
 
-          (let ((names (skempo--abbrev-table-names table)))
-            (abbrev-table-put (symbol-value table) :regexp (regexp-opt names "\\_<\\(")))
+          (let* ((names (skempo--abbrev-table-names table))
+                 (regexp (concat (regexp-opt names "\\_<\\(") " *")))
+            (abbrev-table-put (symbol-value table) :regexp regexp))
 
           (let ((parents (abbrev-table-get (symbol-value mode-table) :parents)))
             (cl-pushnew (symbol-value table) parents :test #'eq)
