@@ -356,6 +356,15 @@ names."
   "Get skempo abbrev table for MODE."
   (intern (concat "skempo-" (symbol-name (skempo--mode-abbrev-table mode)))))
 
+(defun skempo--abbrev-table-names (table)
+  "Return abbrev TABLE names."
+  (let ((names nil))
+    (mapatoms (lambda (abbrev)
+                (when (symbol-value abbrev)
+                  (push (symbol-name abbrev) names)))
+              (symbol-value table))
+    names))
+
 (defun skempo--modes (mode)
   "Normalize MODE argument."
   (cond ((consp mode) mode)
@@ -413,13 +422,8 @@ BODY is an arbitrary argument passed to DEFINE-FUNCTION."
           (define-abbrev (symbol-value table) name "" function-symbol
             :case-fixed t :system t :skempo t)
 
-          (let ((names nil))
-            (mapatoms (lambda (abbrev)
-                        (when (symbol-value abbrev)
-                          (push (symbol-name abbrev) names)))
-                      (symbol-value table))
+          (let ((names (skempo--abbrev-table-names table)))
             (abbrev-table-put (symbol-value table) :regexp (regexp-opt names "\\_<\\(")))
-
 
           (let ((parents (abbrev-table-get (symbol-value mode-table) :parents)))
             (cl-pushnew (symbol-value table) parents :test #'eq)
