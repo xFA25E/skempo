@@ -158,20 +158,6 @@ and add it on non-nil."
          (set-default variable value))
   :group 'skempo)
 
-(defcustom skempo-always-create-tag nil
-  "Generate tags by default for skempo templates.
-Note, you have to set this variable before you define a skempo
-template."
-  :type '(boolean :tag "Always tag?")
-  :group 'skempo)
-
-(defcustom skempo-always-create-abbrev nil
-  "Generate abbrevs by default for skempo templates.
-Note, you have to set this variable before you define a skempo
-template."
-  :type '(boolean :tag "Always abbrev?")
-  :group 'skempo)
-
 (defcustom skempo-enable-tempo-elements nil
   "Enable extra tempo elements.
 These elements add conditionals and looping support for tempo
@@ -461,10 +447,8 @@ Example:
                              :docstring \"defvar template\")
   \"(defvar \" (string-trim-right (buffer-name) (rx \".el\" eos)) \"-\" p n>
   r> \")\")"
-  `(skempo-define #'skempo--define-tempo ,(symbol-name name) ',(skempo--modes mode)
-                  (or skempo-always-create-tag ,tag)
-                  (or skempo-always-create-abbrev ,abbrev)
-                  ,docstring ',body))
+  `(skempo-define #'skempo--define-tempo ,(symbol-name name)
+                  ',(skempo--modes mode) ,tag ,abbrev ,docstring ',body))
 
 ;;;###autoload
 (cl-defmacro skempo-define-skeleton (name (&key mode tag abbrev docstring) &rest body)
@@ -481,10 +465,8 @@ Example:
                                :docstring \"defun template\")
   \"(defun \" str \" (\" @ - \")\" \n
   @ _ \")\" \n)"
-  `(skempo-define #'skempo--define-skeleton ,(symbol-name name) ',(skempo--modes mode)
-                  (or skempo-always-create-tag ,tag)
-                  (or skempo-always-create-abbrev ,abbrev)
-                  ,docstring ',body))
+  `(skempo-define #'skempo--define-skeleton ,(symbol-name name)
+                  ',(skempo--modes mode) ,tag ,abbrev ,docstring ',body))
 
 ;;;###autoload
 (cl-defmacro skempo-define-function (name (&key mode tag abbrev docstring) function)
@@ -497,10 +479,8 @@ abbrevs for existing skeleton templates, such as `sh-case'.
 
 Example:
 \(skempo-define-function shcase (:tag t :abbrev t :mode `sh-mode') `sh-case')"
-  `(skempo-define #'skempo--define-function ,(symbol-name name) ',(skempo--modes mode)
-                  (or skempo-always-create-tag ,tag)
-                  (or skempo-always-create-abbrev ,abbrev)
-                  ,docstring ',function))
+  `(skempo-define #'skempo--define-function ,(symbol-name name)
+                  ',(skempo--modes mode) ,tag ,abbrev ,docstring ',function))
 
 ;;;###autoload
 (progn

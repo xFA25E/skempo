@@ -54,8 +54,6 @@ You can find more *skempo* examples [[https://github.com/xFA25E/nixpkgs-config/t
  '(skempo-delete-duplicate-marks t)
  '(skempo-update-identical-tags t)
  '(skempo-skeleton-marks-support t)
- '(skempo-always-create-tag t)
- '(skempo-always-create-abbrev t)
  '(skempo-mode-lighter " Sk")
  '(skempo-enable-tempo-elements t))
 #+end_src
