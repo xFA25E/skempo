@@ -386,7 +386,9 @@ BODY is an arbitrary argument passed to DEFINE-FUNCTION."
 
     (when tag
       (let ((tag-symbol (gensym (symbol-name function-symbol))))
-        (set tag-symbol `((ignore (,function-symbol))))
+        (if (eq #'skempo--define-tempo define-function)
+            (set tag-symbol body)
+          (set tag-symbol `((ignore (,function-symbol)))))
         (dolist (mode modes)
           (let ((var (skempo--tags-variable mode)))
             (unless (boundp var)
