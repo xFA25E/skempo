@@ -6,7 +6,7 @@
 ;; Keywords: abbrev, convenience
 ;; Version: 0.2.1
 ;; URL: https://github.com/xFA25E/skempo
-;; Package-Requires: ((emacs "25.1") (parent-mode "2.3"))
+;; Package-Requires: ((emacs "25.1"))
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -54,7 +54,6 @@
 (require 'cl-lib)
 (require 'derived)
 (require 'mode-local)
-(require 'parent-mode)
 (require 'pcase)
 (require 'rx)
 (require 'skeleton)
@@ -252,6 +251,17 @@ function does not update identical tags."
       (set tag-list (cons (cons tag template) (symbol-value tag-list))))
     (tempo-invalidate-collection)))
 
+(defun skempo--list-derived-modes (mode)
+  "List all derived modes of MODE + MODE itself."
+  (let ((modes nil))
+    (while mode
+      (when-let ((alias (symbol-function mode)))
+        (when (symbolp alias)
+          (setq mode alias)))
+      (push mode modes)
+      (setq mode (get mode 'derived-mode-parent))  )
+    (nreverse modes)))
+
 ;;;; COMMANDS
 
 ;;;###autoload
@@ -276,7 +286,7 @@ completion."
   :init-value nil
   :lighter skempo-mode-lighter
   :keymap skempo-mode-map
-  (let* ((major-modes (parent-mode-list major-mode))
+  (let* ((major-modes (skempo--list-derived-modes major-mode))
          (tag-vars (mapcar #'skempo--tags-variable major-modes))
          (bound-tag-vars (cl-delete-if-not #'boundp tag-vars)))
     (if skempo-mode
