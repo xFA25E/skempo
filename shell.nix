@@ -2,10 +2,10 @@ let
   pkgs = import <nixpkgs> {};
   eldev = pkgs.stdenv.mkDerivation rec {
     pname = "eldev";
-    version = "0.9.3";
+    version = "1.0";
     src = pkgs.fetchurl {
       url = "https://raw.githubusercontent.com/doublep/eldev/${version}/bin/eldev";
-      sha256 = "0ikhhfxm1rz3wp37spsy8bcnx5071ard71pd1riw09rsybilxhgn";
+      sha256 = "0spni3il3myv70zk18k76sj6yvh3rqi9j9wglz2j5mfs7z2dnr5f";
     };
     nativeBuildInputs = [ pkgs.makeWrapper ];
     unpackPhase = "true";
