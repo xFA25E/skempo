@@ -1,2 +1,7 @@
+result
+/.eldev/
+/.direnv/
+/.envrc
+/Eldev-local
 *.elc
-.eldev
+*-autoloads.el
